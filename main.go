@@ -130,10 +130,9 @@ func (cluster *Cluster) findBestCentroid(p *Point3D) int {
 	return idx
 }
 
-func (cluster *Cluster) canStop(prevCluster []Point3D, curIter int) bool {
+func (cluster Cluster) stopping(prevCluster []Point3D, curIter int) bool {
 
 	l := len(prevCluster)
-
 	if l == 0 {
 		return false
 	}
@@ -143,11 +142,11 @@ func (cluster *Cluster) canStop(prevCluster []Point3D, curIter int) bool {
 		fmt.Println("Distance from previous centroids", dist)
 	}
 
-	if cluster.NbIteration <= curIter {
-		return false
+	if curIter > cluster.NbIteration {
+		return true
 	}
 
-	return true
+	return false
 }
 
 /**
@@ -162,10 +161,11 @@ func (cluster *Cluster) KMeans(nb_centroid, nb_iter int, carte *image.Image) []*
 
 	bounds := (*cluster.Carte).Bounds()
 
-	prevCluster := make([]Point3D, 0)
+	prevCentroids := make([]Point3D, 0)
 
 	iter := 0
-	for cluster.canStop(prevCluster, iter) {
+	for !cluster.stopping(prevCentroids, iter) {
+		prevCentroids = make([]Point3D, 0)
 
 		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 			for x := bounds.Min.X; x < bounds.Max.X; x++ {
@@ -182,6 +182,7 @@ func (cluster *Cluster) KMeans(nb_centroid, nb_iter int, carte *image.Image) []*
 		}
 
 		for k := 0; k < cluster.Nb; k++ {
+			prevCentroids = append(prevCentroids, cluster.Centroids[k].Coord)
 			if len(cluster.Centroids[k].AssignedPoints) > 0 {
 				cluster.Centroids[k].Coord = cluster.Centroids[k].AvgSum() // New coord
 			}
@@ -233,11 +234,16 @@ func imageToCsv(img *image.Image) {
 }
 
 func main() {
-	urlTest := "http://res.cloudinary.com/hpcjvlhpl/image/upload/c_crop,h_200,x_269,y_224/v1529073173/dog_in_the_woods_by_svitakovaeva-d4ecywm.jpg" //"http://res.cloudinary.com/hpcjvlhpl/image/upload/v1528039592/ufqph4cnhifv6eewu6yg.jpg"
+	urlTest := "http://res.cloudinary.com/hpcjvlhpl/image/upload/v1528039592/ufqph4cnhifv6eewu6yg.jpg" //"http://res.cloudinary.com/hpcjvlhpl/image/upload/c_crop,h_200,x_269,y_224/v1529073173/dog_in_the_woods_by_svitakovaeva-d4ecywm.jpg"
 	img := DownloadImage(urlTest)
+	imageToCsv(img)
+
 	cluster := new(Cluster)
 
 	res := cluster.KMeans(3, 300, img)
 
-	fmt.Println("Result", res)
+	for _, e := range res {
+		fmt.Println(e.Coord)
+	}
+
 }
