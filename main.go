@@ -16,7 +16,7 @@ import (
 
 var client http.Client = http.Client{}
 
-// Used to represent RGB
+// Used to represent RGB...
 type Point3D struct {
 	X, Y, Z int
 }
@@ -78,8 +78,6 @@ func (cluster *Cluster) init(nb_centroid, nb_iter int, carte *image.Image) {
 	cluster.Centroids = make([]*Centroid, cluster.Nb)
 	cluster.NbIteration = nb_iter
 
-	add := 255 / (cluster.Nb)
-	var s int
 	for i := 0; i < cluster.Nb; i++ {
 		cluster.Centroids[i] = &Centroid{
 			Coord: Point3D{
@@ -89,8 +87,6 @@ func (cluster *Cluster) init(nb_centroid, nb_iter int, carte *image.Image) {
 			},
 			AssignedPoints: make([]Point3D, 0),
 		}
-
-		s += add
 	}
 }
 
@@ -192,7 +188,6 @@ func (cluster *Cluster) KMeans(nb_centroid, nb_iter int, carte *image.Image) []*
 		}
 
 		iter++
-		fmt.Println("Iteration ", iter)
 	}
 
 	return cluster.Centroids
