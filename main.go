@@ -16,14 +16,9 @@ import (
 
 var client http.Client = http.Client{}
 
-// Used to represent a pixel
-type Point2D struct {
-	X, Y uint
-}
-
 // Used to represent RGB
 type Point3D struct {
-	X, Y, Z uint
+	X, Y, Z int
 }
 
 type Centroid struct {
@@ -61,7 +56,7 @@ func (c Centroid) AvgSum() Point3D {
 		tmp.Z += p.Z
 	}
 
-	m := uint(len(c.AssignedPoints))
+	m := len(c.AssignedPoints)
 	tmp.X /= m
 	tmp.Y /= m
 	tmp.Z /= m
@@ -83,26 +78,32 @@ func (cluster *Cluster) init(nb_centroid, nb_iter int, carte *image.Image) {
 	cluster.Centroids = make([]*Centroid, cluster.Nb)
 	cluster.NbIteration = nb_iter
 
+	add := 255 / (cluster.Nb)
+	var s int
 	for i := 0; i < cluster.Nb; i++ {
 		cluster.Centroids[i] = &Centroid{
 			Coord: Point3D{
-				X: uint(rand.Intn(255)),
-				Y: uint(rand.Intn(255)),
-				Z: uint(rand.Intn(255)),
+				X: rand.Intn(255),
+				Y: rand.Intn(255),
+				Z: rand.Intn(255),
 			},
 			AssignedPoints: make([]Point3D, 0),
 		}
+
+		s += add
 	}
 }
 
 func (cluster Cluster) distance3D(p1 *Point3D, p2 *Point3D) float64 {
-	dx := float64(p1.X - p2.X)
-	dy := float64(p1.Y - p2.Y)
-	dz := float64(p1.Z - p2.Z)
-	x := math.Pow(dx, 2)
-	y := math.Pow(dy, 2)
-	z := math.Pow(dz, 2)
-	return math.Sqrt(x + y + z)
+	dx := p1.X - p2.X
+	dy := p1.Y - p2.Y
+	dz := p1.Z - p2.Z
+
+	x := dx * dx
+	y := dy * dy
+	z := dz * dz
+
+	return math.Sqrt(float64(x + y + z))
 }
 
 /**
@@ -114,7 +115,7 @@ func (cluster Cluster) distance3D(p1 *Point3D, p2 *Point3D) float64 {
 
 func (cluster *Cluster) findBestCentroid(p *Point3D) int {
 
-	shortest := cluster.distance3D(p, &cluster.Centroids[0].Coord)
+	shortest := cluster.distance3D(&cluster.Centroids[0].Coord, p)
 	idx := 0
 
 	for i := 1; i < cluster.Nb; i++ {
@@ -137,12 +138,13 @@ func (cluster Cluster) stopping(prevCluster []Point3D, curIter int) bool {
 		return false
 	}
 
+	var s float64
 	for i := 0; i < l; i++ {
 		dist := cluster.distance3D(&cluster.Centroids[i].Coord, &prevCluster[i])
-		fmt.Println("Distance from previous centroids", dist)
+		s += dist
 	}
 
-	if curIter > cluster.NbIteration {
+	if s <= 2.0 || curIter > cluster.NbIteration {
 		return true
 	}
 
@@ -170,10 +172,10 @@ func (cluster *Cluster) KMeans(nb_centroid, nb_iter int, carte *image.Image) []*
 		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 			for x := bounds.Min.X; x < bounds.Max.X; x++ {
 				r, g, b, _ := (*cluster.Carte).At(x, y).RGBA()
-				nx := r >> 8
-				ny := g >> 8
-				nz := b >> 8
-				curPoint := Point3D{X: uint(nx), Y: uint(ny), Z: uint(nz)}
+				nx := int(r >> 8)
+				ny := int(g >> 8)
+				nz := int(b >> 8)
+				curPoint := Point3D{X: nx, Y: ny, Z: nz}
 				idx := cluster.findBestCentroid(&curPoint)
 				cluster.Centroids[idx].AssignedPoints = append(
 					cluster.Centroids[idx].AssignedPoints,
@@ -185,6 +187,7 @@ func (cluster *Cluster) KMeans(nb_centroid, nb_iter int, carte *image.Image) []*
 			prevCentroids = append(prevCentroids, cluster.Centroids[k].Coord)
 			if len(cluster.Centroids[k].AssignedPoints) > 0 {
 				cluster.Centroids[k].Coord = cluster.Centroids[k].AvgSum() // New coord
+				cluster.Centroids[k].AssignedPoints = make([]Point3D, 0)
 			}
 		}
 
@@ -234,7 +237,7 @@ func imageToCsv(img *image.Image) {
 }
 
 func main() {
-	urlTest := "http://res.cloudinary.com/hpcjvlhpl/image/upload/v1528039592/ufqph4cnhifv6eewu6yg.jpg" //"http://res.cloudinary.com/hpcjvlhpl/image/upload/c_crop,h_200,x_269,y_224/v1529073173/dog_in_the_woods_by_svitakovaeva-d4ecywm.jpg"
+	urlTest := "http://res.cloudinary.com/hpcjvlhpl/image/upload/c_scale,w_200/v1528026818/pzs6xx1ruh15ddwonepl.jpg"
 	img := DownloadImage(urlTest)
 	imageToCsv(img)
 
